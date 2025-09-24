@@ -509,6 +509,34 @@ def create_enhanced_vertex_colors(mesh_vertices, base_color, highlight_indices, 
 
     return colors
 
+def combine_mesh_with_markers(mesh_vertices, mesh_faces, marker_vertices, marker_faces, marker_colors):
+    """
+    Combine mesh with marker geometries into a single mesh for visualization.
+
+    Args:
+        mesh_vertices: original mesh vertices (N, 3)
+        mesh_faces: original mesh faces (M, 3)
+        marker_vertices: marker vertices (P, 3)
+        marker_faces: marker faces (Q, 3)
+        marker_colors: colors for all vertices (N+P, 3)
+
+    Returns:
+        combined_vertices: combined vertices (N+P, 3)
+        combined_faces: combined faces with adjusted indices
+        combined_colors: combined colors (N+P, 3)
+    """
+    if len(marker_vertices) == 0:
+        return mesh_vertices, mesh_faces, marker_colors[:len(mesh_vertices)]
+
+    # Combine vertices
+    combined_vertices = np.vstack([mesh_vertices, marker_vertices])
+
+    # Adjust marker face indices to account for mesh vertices
+    adjusted_marker_faces = marker_faces + len(mesh_vertices)
+    combined_faces = np.vstack([mesh_faces, adjusted_marker_faces])
+
+    return combined_vertices, combined_faces, marker_colors
+
 def visualize_multi_point_correspondences(
     source_mesh,
     target_mesh,
@@ -517,7 +545,7 @@ def visualize_multi_point_correspondences(
     source_vertex_indices
 ):
     """
-    Visualize multiple point correspondences with 3D octahedron markers + vertex highlighting fallback.
+    Visualize multiple point correspondences by combining mesh + markers into single geometries.
 
     Args:
         source_mesh: source mesh container
@@ -536,51 +564,47 @@ def visualize_multi_point_correspondences(
     source_indices = [corr[0] for corr in correspondences]
     target_indices = [corr[1] for corr in correspondences]
 
-    # Create base mesh visualization (gray background)
-    source_mesh_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
-    target_mesh_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
-
-    # Create base mesh plot
-    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
-    mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
-
-    # Try to add 3D octahedron markers
     try:
-        print("🎯 Adding 3D octahedron markers...")
+        print("🎯 Creating combined mesh + 3D marker visualization...")
 
         # Create 3D markers for source mesh
         source_highlight_verts, source_highlight_faces, source_highlight_colors = create_highlight_regions(
-            source_mesh.vert, source_mesh.face, source_indices, correspondence_colors, radius_scale=0.04
+            source_mesh.vert, source_mesh.face, source_indices, correspondence_colors, radius_scale=0.06
         )
 
         # Create 3D markers for target mesh
         target_highlight_verts, target_highlight_faces, target_highlight_colors = create_highlight_regions(
-            target_mesh.vert, target_mesh.face, target_indices, correspondence_colors, radius_scale=0.04
+            target_mesh.vert, target_mesh.face, target_indices, correspondence_colors, radius_scale=0.06
         )
 
-        markers_added = False
+        # Create base colors for meshes (gray)
+        source_base_colors = np.ones((len(source_mesh.vert), 3)) * 0.7
+        target_base_colors = np.ones((len(target_mesh.vert), 3)) * 0.7
 
-        # Add the 3D markers to visualization one by one for better error handling
-        if len(source_highlight_verts) > 0 and len(source_highlight_faces) > 0:
-            print(f"   Adding {len(correspondences)} source octahedrons...")
-            # Add all source markers at once
-            mp.subplot(source_highlight_verts, source_highlight_faces, c=source_highlight_colors, s=[2, 2, 0], data=d)
-            markers_added = True
+        # Combine colors (mesh + markers)
+        source_combined_colors = np.vstack([source_base_colors, source_highlight_colors]) if len(source_highlight_colors) > 0 else source_base_colors
+        target_combined_colors = np.vstack([target_base_colors, target_highlight_colors]) if len(target_highlight_colors) > 0 else target_base_colors
 
-        if len(target_highlight_verts) > 0 and len(target_highlight_faces) > 0:
-            print(f"   Adding {len(correspondences)} target octahedrons...")
-            # Add all target markers at once
-            mp.subplot(target_highlight_verts, target_highlight_faces, c=target_highlight_colors, s=[2, 2, 1], data=d)
-            markers_added = True
+        # Combine geometries
+        source_combined_verts, source_combined_faces, source_final_colors = combine_mesh_with_markers(
+            source_mesh.vert, source_mesh.face, source_highlight_verts, source_highlight_faces, source_combined_colors
+        )
 
-        if markers_added:
-            print(f"✅ 3D octahedron markers added successfully!")
-            print(f"   Each correspondence pair has matching colored octahedrons")
-        else:
-            raise Exception("No markers could be created")
+        target_combined_verts, target_combined_faces, target_final_colors = combine_mesh_with_markers(
+            target_mesh.vert, target_mesh.face, target_highlight_verts, target_highlight_faces, target_combined_colors
+        )
+
+        # Create visualization with combined geometries (no data= parameter needed)
+        d = mp.subplot(source_combined_verts, source_combined_faces, c=source_final_colors, s=[2, 2, 0])
+        mp.subplot(target_combined_verts, target_combined_faces, c=target_final_colors, s=[2, 2, 1], data=d)
+
+        print(f"✅ Combined mesh + 3D octahedron markers visualization created!")
+        print(f"   Each correspondence pair has matching colored 3D octahedrons")
+        print(f"   Source mesh: {len(source_mesh.vert)} vertices + {len(source_highlight_verts)} marker vertices")
+        print(f"   Target mesh: {len(target_mesh.vert)} vertices + {len(target_highlight_verts)} marker vertices")
 
     except Exception as e:
-        print(f"⚠️  3D markers failed ({str(e)}), using enhanced vertex highlighting...")
+        print(f"⚠️  Combined visualization failed ({str(e)}), using enhanced vertex highlighting...")
 
         # Fallback: enhanced vertex colors for better visibility
         source_mesh_colors = create_enhanced_vertex_colors(
@@ -599,7 +623,7 @@ def visualize_multi_point_correspondences(
             enhancement_factor=2.0  # Make highlights very bright
         )
 
-        # Recreate visualization with enhanced vertex colors
+        # Create visualization with enhanced vertex colors
         d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
         mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
 
