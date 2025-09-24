@@ -84,7 +84,7 @@ def generate_distinct_colors(n):
         colors.append(rgb)
     return np.array(colors)
 
-def create_sphere(center, radius=0.02, resolution=20):
+def create_sphere(center, radius=0.02, resolution=16):
     """
     Create a sphere mesh at given center with specified radius.
 
@@ -108,7 +108,7 @@ def create_sphere(center, radius=0.02, resolution=20):
     # Convert to vertices
     vertices = np.stack([x.flatten(), y.flatten(), z.flatten()], axis=1)
 
-    # Create faces for the sphere
+    # Create faces for the sphere (more robust face generation)
     faces = []
     for i in range(resolution - 1):
         for j in range(resolution - 1):
@@ -118,10 +118,12 @@ def create_sphere(center, radius=0.02, resolution=20):
             v3 = (i + 1) * resolution + j
             v4 = (i + 1) * resolution + (j + 1)
 
-            faces.append([v1, v2, v3])
-            faces.append([v2, v4, v3])
+            # Ensure faces are properly oriented
+            if v1 < len(vertices) and v2 < len(vertices) and v3 < len(vertices) and v4 < len(vertices):
+                faces.append([v1, v2, v3])
+                faces.append([v2, v4, v3])
 
-    return vertices, np.array(faces)
+    return vertices, np.array(faces, dtype=np.int32)
 
 def calculate_mesh_scale(mesh_vertices):
     """
@@ -242,36 +244,68 @@ def visualize_point_similarity(
 
     # Create base mesh visualization with similarity colors
     source_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray color
+    source_colors[source_point_idx] = [1.0, 0.0, 0.0]  # Red highlight for source point
+
+    # Create base visualization
     d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
+
+    # Handle target mesh coloring
+    if raw_similarities is not None:
+        most_similar_idx = np.argmax(raw_similarities)
+        target_colors_rgb[most_similar_idx] = [1.0, 0.0, 0.0]  # Red highlight for most similar vertex
+
     mp.subplot(target_mesh.vert, target_mesh.face, c=target_colors_rgb, s=[2, 2, 1], data=d)
 
-    # Add red sphere for source point
-    source_center = source_mesh.vert[source_point_idx]
-    source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
-    source_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(source_sphere_verts), 1))  # Red
-    mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
+    # Try to add sphere visualization with error handling
+    spheres_added = False
+    try:
+        # Add red sphere for source point
+        source_center = source_mesh.vert[source_point_idx]
+        source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
+        source_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(source_sphere_verts), 1))  # Red
 
+        # Validate sphere geometry
+        if len(source_sphere_verts) > 0 and len(source_sphere_faces) > 0:
+            mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
+            spheres_added = True
+
+        if raw_similarities is not None:
+            # Add red sphere for most similar vertex on target mesh
+            target_center = target_mesh.vert[most_similar_idx]
+            target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
+            target_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(target_sphere_verts), 1))  # Red
+
+            # Validate sphere geometry
+            if len(target_sphere_verts) > 0 and len(target_sphere_faces) > 0:
+                mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
+
+    except Exception as e:
+        print(f"⚠️  Warning: Could not render spheres ({str(e)}), using vertex highlighting instead")
+        spheres_added = False
+
+    # Print results
     if raw_similarities is not None:
-        # Find the most similar vertex on target mesh
         most_similar_idx = np.argmax(raw_similarities)
+        if spheres_added:
+            print(f"🎯 Enhanced visualization with sphere highlighting...")
+            print(f"Source point (red sphere): vertex {source_point_idx}")
+            print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} marked with RED SPHERE")
+            print(f"Sphere radius - Source: {source_radius:.4f}, Target: {target_radius:.4f}")
+        else:
+            print(f"🎯 Visualization with vertex highlighting...")
+            print(f"Source point (red): vertex {source_point_idx}")
+            print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} in RED")
 
-        # Add red sphere for most similar vertex on target mesh
-        target_center = target_mesh.vert[most_similar_idx]
-        target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
-        target_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(target_sphere_verts), 1))  # Red
-        mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
-
-        print(f"🎯 Enhanced visualization with sphere highlighting...")
-        print(f"Source point (red sphere): vertex {source_point_idx}")
-        print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} marked with RED SPHERE")
         print(f"Most similar vertex similarity: {raw_similarities[most_similar_idx]:.4f}")
-        print(f"Sphere radius - Source: {source_radius:.4f}, Target: {target_radius:.4f}")
         print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
 
     else:
-        print(f"Source point marked with red sphere: vertex {source_point_idx}")
+        if spheres_added:
+            print(f"Source point marked with red sphere: vertex {source_point_idx}")
+            print(f"Sphere radius: {source_radius:.4f}")
+        else:
+            print(f"Source point highlighted in red: vertex {source_point_idx}")
         print(f"Target mesh colored by similarity to source point")
-        print(f"Sphere radius: {source_radius:.4f}")
         print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
 
 # Example usage function
@@ -445,21 +479,44 @@ def visualize_multi_point_correspondences(
     d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
     mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
 
-    # Add colored spheres for each correspondence
-    for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
-        # Source sphere
-        source_center = source_mesh.vert[source_idx]
-        source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
-        source_sphere_colors = np.tile(color, (len(source_sphere_verts), 1))
+    # Try to add colored spheres for each correspondence with error handling
+    spheres_added = False
+    try:
+        for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
+            # Source sphere
+            source_center = source_mesh.vert[source_idx]
+            source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
+            source_sphere_colors = np.tile(color, (len(source_sphere_verts), 1))
 
-        # Target sphere
-        target_center = target_mesh.vert[target_idx]
-        target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
-        target_sphere_colors = np.tile(color, (len(target_sphere_verts), 1))
+            # Target sphere
+            target_center = target_mesh.vert[target_idx]
+            target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
+            target_sphere_colors = np.tile(color, (len(target_sphere_verts), 1))
 
-        # Add spheres to the existing visualization
-        mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
-        mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
+            # Validate sphere geometry before adding
+            if (len(source_sphere_verts) > 0 and len(source_sphere_faces) > 0 and
+                len(target_sphere_verts) > 0 and len(target_sphere_faces) > 0):
+                # Add spheres to the existing visualization
+                mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
+                mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
+
+        spheres_added = True
+
+    except Exception as e:
+        print(f"⚠️  Warning: Could not render spheres ({str(e)}), using vertex highlighting instead")
+        spheres_added = False
+
+        # Fallback to vertex coloring
+        source_mesh_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
+        target_mesh_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
+
+        for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
+            source_mesh_colors[source_idx] = color
+            target_mesh_colors[target_idx] = color
+
+        # Recreate visualization with colored vertices
+        d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
+        mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
 
     print(f"\n🎯 Sphere Visualization Details:")
     print(f"  - Source mesh sphere radius: {source_radius:.4f}")
