@@ -517,7 +517,7 @@ def visualize_multi_point_correspondences(
     source_vertex_indices
 ):
     """
-    Visualize multiple point correspondences with enhanced vertex highlighting.
+    Visualize multiple point correspondences with 3D octahedron markers + vertex highlighting fallback.
 
     Args:
         source_mesh: source mesh container
@@ -527,7 +527,7 @@ def visualize_multi_point_correspondences(
         source_vertex_indices: indices of source vertices (N,)
     """
 
-    print(f"🎨 Visualizing {len(correspondences)} correspondences with enhanced vertex highlighting:")
+    print(f"🎨 Visualizing {len(correspondences)} correspondences:")
     for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
         print(f"  Correspondence {i+1}: Source vertex {source_idx} ↔ Target vertex {target_idx} (similarity: {similarity:.4f})")
         print(f"    Color: RGB({color[0]:.2f}, {color[1]:.2f}, {color[2]:.2f})")
@@ -536,30 +536,75 @@ def visualize_multi_point_correspondences(
     source_indices = [corr[0] for corr in correspondences]
     target_indices = [corr[1] for corr in correspondences]
 
-    # Create enhanced vertex colors for better visibility
-    source_mesh_colors = create_enhanced_vertex_colors(
-        source_mesh.vert,
-        base_color=[0.7, 0.7, 0.7],  # Gray background
-        highlight_indices=source_indices,
-        highlight_colors=correspondence_colors,
-        enhancement_factor=1.5  # Make highlights brighter
-    )
+    # Create base mesh visualization (gray background)
+    source_mesh_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
+    target_mesh_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
 
-    target_mesh_colors = create_enhanced_vertex_colors(
-        target_mesh.vert,
-        base_color=[0.7, 0.7, 0.7],  # Gray background
-        highlight_indices=target_indices,
-        highlight_colors=correspondence_colors,
-        enhancement_factor=1.5  # Make highlights brighter
-    )
-
-    # Create the enhanced visualization
+    # Create base mesh plot
     d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
     mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
 
-    print(f"✅ Enhanced vertex highlighting applied successfully!")
-    print(f"   Correspondence points are highlighted with bright, distinct colors")
-    print(f"   Each matching pair uses the same color on both source and target meshes")
+    # Try to add 3D octahedron markers
+    try:
+        print("🎯 Adding 3D octahedron markers...")
+
+        # Create 3D markers for source mesh
+        source_highlight_verts, source_highlight_faces, source_highlight_colors = create_highlight_regions(
+            source_mesh.vert, source_mesh.face, source_indices, correspondence_colors, radius_scale=0.04
+        )
+
+        # Create 3D markers for target mesh
+        target_highlight_verts, target_highlight_faces, target_highlight_colors = create_highlight_regions(
+            target_mesh.vert, target_mesh.face, target_indices, correspondence_colors, radius_scale=0.04
+        )
+
+        markers_added = False
+
+        # Add the 3D markers to visualization one by one for better error handling
+        if len(source_highlight_verts) > 0 and len(source_highlight_faces) > 0:
+            print(f"   Adding {len(correspondences)} source octahedrons...")
+            # Add all source markers at once
+            mp.subplot(source_highlight_verts, source_highlight_faces, c=source_highlight_colors, s=[2, 2, 0], data=d)
+            markers_added = True
+
+        if len(target_highlight_verts) > 0 and len(target_highlight_faces) > 0:
+            print(f"   Adding {len(correspondences)} target octahedrons...")
+            # Add all target markers at once
+            mp.subplot(target_highlight_verts, target_highlight_faces, c=target_highlight_colors, s=[2, 2, 1], data=d)
+            markers_added = True
+
+        if markers_added:
+            print(f"✅ 3D octahedron markers added successfully!")
+            print(f"   Each correspondence pair has matching colored octahedrons")
+        else:
+            raise Exception("No markers could be created")
+
+    except Exception as e:
+        print(f"⚠️  3D markers failed ({str(e)}), using enhanced vertex highlighting...")
+
+        # Fallback: enhanced vertex colors for better visibility
+        source_mesh_colors = create_enhanced_vertex_colors(
+            source_mesh.vert,
+            base_color=[0.7, 0.7, 0.7],  # Gray background
+            highlight_indices=source_indices,
+            highlight_colors=correspondence_colors,
+            enhancement_factor=2.0  # Make highlights very bright
+        )
+
+        target_mesh_colors = create_enhanced_vertex_colors(
+            target_mesh.vert,
+            base_color=[0.7, 0.7, 0.7],  # Gray background
+            highlight_indices=target_indices,
+            highlight_colors=correspondence_colors,
+            enhancement_factor=2.0  # Make highlights very bright
+        )
+
+        # Recreate visualization with enhanced vertex colors
+        d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
+        mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
+
+        print(f"✅ Enhanced vertex highlighting applied!")
+        print(f"   Correspondence points are highlighted with very bright, distinct colors")
 
     print(f"\n📊 Correspondence Statistics:")
     similarities = [corr[2] for corr in correspondences]
