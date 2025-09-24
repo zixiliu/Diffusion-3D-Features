@@ -105,7 +105,6 @@ def visualize_point_similarity(
     target_mesh,
     source_point_idx,
     similarity_colors,
-    colormap='viridis'
 ):
     """
     Visualize the source mesh with highlighted point and target mesh with similarity colors.
@@ -115,7 +114,6 @@ def visualize_point_similarity(
         target_mesh: target mesh container
         source_point_idx: index of the specific point on source mesh
         similarity_colors: normalized similarity values for coloring target mesh
-        colormap: matplotlib colormap name
     """
 
     # Create colors for source mesh - highlight the specific point
@@ -124,7 +122,7 @@ def visualize_point_similarity(
 
     # Create subplot with source mesh (left) and target mesh (right) with similarity colors
     d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
-    mp.subplot(target_mesh.vert, target_mesh.face, c=similarity_colors, s=[2, 2, 1], data=d, colormap=colormap)
+    mp.subplot(target_mesh.vert, target_mesh.face, c=similarity_colors, s=[2, 2, 1], data=d)
 
     print(f"Source point (red): vertex {source_point_idx}")
     print(f"Target mesh colored by similarity to source point")
