@@ -24,7 +24,12 @@ def run_rendering(device, mesh, mesh_vertices, num_views, H, W, add_angle_azi=0,
     elevation = torch.linspace(start = 0 , end = end , steps = steps).repeat(steps) + add_angle_ele
     azimuth = torch.linspace(start = 0 , end = end , steps = steps)
     azimuth = torch.repeat_interleave(azimuth, steps) + add_angle_azi
-    bbox_center = bbox_center.unsqueeze(0)
+
+    # Ensure bbox_center has the right shape: flatten it first, then expand to match batch size
+    batch_size = azimuth.shape[0]
+    bbox_center = bbox_center.flatten()  # Ensure it's 1D: [3]
+    bbox_center = bbox_center.unsqueeze(0).expand(batch_size, -1)  # Now [batch_size, 3]
+
     rotation, translation = look_at_view_transform(
         dist=distance, azim=azimuth, elev=elevation, device=device, at=bbox_center
     )
