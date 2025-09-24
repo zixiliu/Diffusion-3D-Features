@@ -33,6 +33,57 @@ def find_closest_vertex(point_3d, mesh_vertices):
 
     return int(closest_vertex_idx), float(closest_distance)
 
+def find_closest_vertices_batch(points_3d, mesh_vertices):
+    """
+    Find the closest vertices to multiple 3D points.
+
+    Args:
+        points_3d: 3D coordinates as array-like (N, 3) or torch tensor
+        mesh_vertices: mesh vertices as numpy array or torch tensor (M, 3)
+
+    Returns:
+        closest_vertex_indices: array of indices of closest vertices (N,)
+        closest_distances: array of distances to closest vertices (N,)
+    """
+    # Convert to numpy arrays for consistent processing
+    if isinstance(points_3d, torch.Tensor):
+        points_3d = points_3d.cpu().numpy()
+    if isinstance(mesh_vertices, torch.Tensor):
+        mesh_vertices = mesh_vertices.cpu().numpy()
+
+    points_3d = np.array(points_3d)
+    if points_3d.ndim == 1:
+        points_3d = points_3d.reshape(1, 3)  # Handle single point case
+
+    # Compute distances from all points to all vertices
+    distances = np.linalg.norm(mesh_vertices[np.newaxis, :, :] - points_3d[:, np.newaxis, :], axis=2)
+
+    # Find closest vertices
+    closest_vertex_indices = np.argmin(distances, axis=1)
+    closest_distances = np.min(distances, axis=1)
+
+    return closest_vertex_indices.astype(int), closest_distances
+
+def generate_distinct_colors(n):
+    """
+    Generate n distinct colors for visualization.
+
+    Args:
+        n: number of colors to generate
+
+    Returns:
+        colors: array of RGB colors (n, 3)
+    """
+    import colorsys
+    colors = []
+    for i in range(n):
+        hue = i / n
+        saturation = 0.8 + 0.2 * (i % 2)  # Alternate between high and very high saturation
+        value = 0.9 + 0.1 * ((i + 1) % 2)  # Alternate between high and very high value
+        rgb = colorsys.hsv_to_rgb(hue, saturation, value)
+        colors.append(rgb)
+    return np.array(colors)
+
 def point_similarity_colormap(
     device,
     pipe,
@@ -206,3 +257,178 @@ def run_point_similarity_analysis(
     )
 
     return similarity_colors, raw_similarities, source_point_idx, closest_distance
+
+def multi_point_correspondence_analysis(
+    device,
+    pipe,
+    dino_model,
+    source_mesh,
+    target_mesh,
+    source_points_3d,
+    prompt,
+    num_views=100,
+    **kwargs
+):
+    """
+    Find correspondences for multiple 3D points and return color-coded results.
+
+    Args:
+        device: torch device
+        pipe: diffusion pipeline
+        dino_model: DINO model
+        source_mesh: source mesh container
+        target_mesh: target mesh container
+        source_points_3d: 3D coordinates (N, 3) as array-like or torch tensor
+        prompt: text prompt for feature extraction
+        num_views: number of views for rendering
+        **kwargs: additional arguments for get_features_per_vertex
+
+    Returns:
+        correspondences: list of (source_idx, target_idx, similarity_score) tuples
+        correspondence_colors: RGB colors for each correspondence pair (N, 3)
+        source_vertex_indices: indices of closest vertices to input 3D points (N,)
+        closest_distances: distances from input points to closest vertices (N,)
+    """
+
+    # Convert input to numpy array
+    source_points_3d = np.array(source_points_3d)
+    if source_points_3d.ndim == 1:
+        source_points_3d = source_points_3d.reshape(1, 3)
+
+    num_points = len(source_points_3d)
+    print(f"Finding correspondences for {num_points} source points...")
+
+    # Find closest vertices to input 3D points
+    source_vertex_indices, closest_distances = find_closest_vertices_batch(source_points_3d, source_mesh.vert)
+
+    print("Closest vertices to input 3D points:")
+    for i, (point, vertex_idx, distance) in enumerate(zip(source_points_3d, source_vertex_indices, closest_distances)):
+        print(f"  Point {i}: {point} -> Vertex {vertex_idx} (distance: {distance:.4f})")
+
+    # Convert mesh containers to torch meshes
+    source_torch_mesh = convert_mesh_container_to_torch_mesh(source_mesh, device)
+    target_torch_mesh = convert_mesh_container_to_torch_mesh(target_mesh, device)
+
+    print("Computing features for source mesh...")
+    source_features = get_features_per_vertex(
+        device, pipe, dino_model, source_torch_mesh, prompt, num_views, **kwargs
+    )
+
+    print("Computing features for target mesh...")
+    target_features = get_features_per_vertex(
+        device, pipe, dino_model, target_torch_mesh, prompt, num_views, **kwargs
+    )
+
+    # Find correspondences for each source point
+    correspondences = []
+    for i, source_vertex_idx in enumerate(source_vertex_indices):
+        # Get feature vector for this source vertex
+        source_point_feature = source_features[source_vertex_idx:source_vertex_idx+1]
+
+        # Compute similarity to all target vertices
+        similarities = cosine_similarity(source_point_feature, target_features)
+        similarity_scores = similarities[0].cpu().numpy()
+
+        # Find most similar target vertex
+        target_vertex_idx = np.argmax(similarity_scores)
+        max_similarity = similarity_scores[target_vertex_idx]
+
+        correspondences.append((int(source_vertex_idx), int(target_vertex_idx), float(max_similarity)))
+        print(f"  Point {i}: Source vertex {source_vertex_idx} -> Target vertex {target_vertex_idx} (similarity: {max_similarity:.4f})")
+
+    # Generate distinct colors for each correspondence
+    correspondence_colors = generate_distinct_colors(num_points)
+
+    return correspondences, correspondence_colors, source_vertex_indices, closest_distances
+
+def visualize_multi_point_correspondences(
+    source_mesh,
+    target_mesh,
+    correspondences,
+    correspondence_colors,
+    source_vertex_indices
+):
+    """
+    Visualize multiple point correspondences with color coding.
+
+    Args:
+        source_mesh: source mesh container
+        target_mesh: target mesh container
+        correspondences: list of (source_idx, target_idx, similarity_score) tuples
+        correspondence_colors: RGB colors for each correspondence pair (N, 3)
+        source_vertex_indices: indices of source vertices (N,)
+    """
+
+    # Initialize mesh colors (gray background)
+    source_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
+    target_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
+
+    # Color each correspondence pair with the same color
+    print(f"🎨 Visualizing {len(correspondences)} correspondences with distinct colors:")
+    for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
+        source_colors[source_idx] = color
+        target_colors[target_idx] = color
+        print(f"  Correspondence {i+1}: Source vertex {source_idx} ↔ Target vertex {target_idx} (similarity: {similarity:.4f})")
+
+    # Create visualization
+    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
+    mp.subplot(target_mesh.vert, target_mesh.face, c=target_colors, s=[2, 2, 1], data=d)
+
+    print(f"\n📊 Correspondence Statistics:")
+    similarities = [corr[2] for corr in correspondences]
+    print(f"  - Average similarity: {np.mean(similarities):.4f}")
+    print(f"  - Min similarity: {np.min(similarities):.4f}")
+    print(f"  - Max similarity: {np.max(similarities):.4f}")
+
+def run_multi_point_correspondence_analysis(
+    source_mesh,
+    target_mesh,
+    source_points_3d,
+    device,
+    pipe,
+    dino_model,
+    prompt="a textured 3D model",
+    num_views=50
+):
+    """
+    Complete pipeline for multi-point correspondence analysis.
+
+    Args:
+        source_mesh: source mesh container
+        target_mesh: target mesh container
+        source_points_3d: 3D coordinates (N, 3) as array-like or torch tensor
+        device: torch device
+        pipe: diffusion pipeline
+        dino_model: DINO model
+        prompt: text prompt for feature extraction
+        num_views: number of views for rendering
+
+    Returns:
+        correspondences: list of (source_idx, target_idx, similarity_score) tuples
+        correspondence_colors: RGB colors for each correspondence pair (N, 3)
+        source_vertex_indices: indices of closest vertices to input 3D points (N,)
+        closest_distances: distances from input points to closest vertices (N,)
+    """
+
+    # Find correspondences
+    correspondences, correspondence_colors, source_vertex_indices, closest_distances = multi_point_correspondence_analysis(
+        device=device,
+        pipe=pipe,
+        dino_model=dino_model,
+        source_mesh=source_mesh,
+        target_mesh=target_mesh,
+        source_points_3d=source_points_3d,
+        prompt=prompt,
+        num_views=num_views
+    )
+
+    # Visualize results
+    visualize_multi_point_correspondences(
+        source_mesh=source_mesh,
+        target_mesh=target_mesh,
+        correspondences=correspondences,
+        correspondence_colors=correspondence_colors,
+        source_vertex_indices=source_vertex_indices
+    )
+
+    return correspondences, correspondence_colors, source_vertex_indices, closest_distances
