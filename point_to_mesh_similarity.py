@@ -212,6 +212,65 @@ def point_similarity_colormap(
 
     return normalized_similarities, similarity_scores, source_point_idx, closest_distance
 
+def create_highlight_regions(mesh_vertices, mesh_faces, highlight_indices, colors, radius_scale=0.05):
+    """
+    Create enlarged regions around specific vertices for better visibility.
+
+    Args:
+        mesh_vertices: mesh vertices (N, 3)
+        mesh_faces: mesh faces (M, 3)
+        highlight_indices: vertex indices to highlight
+        colors: colors for each highlight (len(highlight_indices), 3)
+        radius_scale: scale factor for highlight region size
+
+    Returns:
+        highlight_vertices: vertices for highlight regions
+        highlight_faces: faces for highlight regions
+        highlight_colors: colors for highlight regions
+    """
+    if len(highlight_indices) == 0:
+        return np.array([]), np.array([]), np.array([])
+
+    # Calculate mesh scale for consistent sizing
+    bbox_size = np.linalg.norm(np.max(mesh_vertices, axis=0) - np.min(mesh_vertices, axis=0))
+    radius = bbox_size * radius_scale
+
+    all_vertices = []
+    all_faces = []
+    all_colors = []
+
+    for i, (vertex_idx, color) in enumerate(zip(highlight_indices, colors)):
+        center = mesh_vertices[vertex_idx]
+
+        # Create a simple octahedron for highlighting (6 vertices, 8 faces)
+        # This is much simpler than a sphere and more reliable
+        vertices = np.array([
+            center + [radius, 0, 0],      # +X
+            center + [-radius, 0, 0],     # -X
+            center + [0, radius, 0],      # +Y
+            center + [0, -radius, 0],     # -Y
+            center + [0, 0, radius],      # +Z
+            center + [0, 0, -radius]      # -Z
+        ])
+
+        # Define octahedron faces
+        faces = np.array([
+            [0, 2, 4], [0, 4, 3], [0, 3, 5], [0, 5, 2],  # Right side
+            [1, 4, 2], [1, 3, 4], [1, 5, 3], [1, 2, 5]   # Left side
+        ])
+
+        # Offset face indices for this highlight
+        faces = faces + len(all_vertices)
+
+        # Colors for all vertices of this highlight
+        vertex_colors = np.tile(color, (len(vertices), 1))
+
+        all_vertices.extend(vertices)
+        all_faces.extend(faces)
+        all_colors.extend(vertex_colors)
+
+    return np.array(all_vertices), np.array(all_faces), np.array(all_colors)
+
 def visualize_point_similarity(
     source_mesh,
     target_mesh,
@@ -222,7 +281,7 @@ def visualize_point_similarity(
 ):
     """
     Visualize the source mesh with highlighted point and target mesh with similarity colors.
-    Also highlights the most similar vertex with a red sphere on the target mesh.
+    Uses robust octahedron highlighting instead of complex spheres.
 
     Args:
         source_mesh: source mesh container
@@ -234,10 +293,6 @@ def visualize_point_similarity(
     """
     import matplotlib.pyplot as plt
 
-    # Calculate appropriate sphere radius
-    source_radius = calculate_mesh_scale(source_mesh.vert)
-    target_radius = calculate_mesh_scale(target_mesh.vert)
-
     # Convert similarity colors to RGB using the specified colormap
     cmap = plt.get_cmap(colormap)
     target_colors_rgb = cmap(similarity_colors)[:, :3]  # Get RGB, ignore alpha
@@ -246,65 +301,48 @@ def visualize_point_similarity(
     source_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray color
     source_colors[source_point_idx] = [1.0, 0.0, 0.0]  # Red highlight for source point
 
-    # Create base visualization
-    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
-
     # Handle target mesh coloring
+    most_similar_idx = None
     if raw_similarities is not None:
         most_similar_idx = np.argmax(raw_similarities)
         target_colors_rgb[most_similar_idx] = [1.0, 0.0, 0.0]  # Red highlight for most similar vertex
 
+    # Create base visualization
+    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
     mp.subplot(target_mesh.vert, target_mesh.face, c=target_colors_rgb, s=[2, 2, 1], data=d)
 
-    # Try to add sphere visualization with error handling
-    spheres_added = False
+    # Add enhanced highlighting with octahedrons (more reliable than spheres)
     try:
-        # Add red sphere for source point
-        source_center = source_mesh.vert[source_point_idx]
-        source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
-        source_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(source_sphere_verts), 1))  # Red
+        # Source highlight
+        source_highlight_verts, source_highlight_faces, source_highlight_colors = create_highlight_regions(
+            source_mesh.vert, source_mesh.face, [source_point_idx], [[1.0, 0.0, 0.0]]
+        )
 
-        # Validate sphere geometry
-        if len(source_sphere_verts) > 0 and len(source_sphere_faces) > 0:
-            mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
-            spheres_added = True
+        if len(source_highlight_verts) > 0:
+            mp.subplot(source_highlight_verts, source_highlight_faces, c=source_highlight_colors, s=[2, 2, 0], data=d)
 
-        if raw_similarities is not None:
-            # Add red sphere for most similar vertex on target mesh
-            target_center = target_mesh.vert[most_similar_idx]
-            target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
-            target_sphere_colors = np.tile([1.0, 0.0, 0.0], (len(target_sphere_verts), 1))  # Red
+        # Target highlight (if most similar vertex found)
+        if most_similar_idx is not None:
+            target_highlight_verts, target_highlight_faces, target_highlight_colors = create_highlight_regions(
+                target_mesh.vert, target_mesh.face, [most_similar_idx], [[1.0, 0.0, 0.0]]
+            )
 
-            # Validate sphere geometry
-            if len(target_sphere_verts) > 0 and len(target_sphere_faces) > 0:
-                mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
+            if len(target_highlight_verts) > 0:
+                mp.subplot(target_highlight_verts, target_highlight_faces, c=target_highlight_colors, s=[2, 2, 1], data=d)
+
+        print(f"🎯 Enhanced visualization with 3D highlighting...")
 
     except Exception as e:
-        print(f"⚠️  Warning: Could not render spheres ({str(e)}), using vertex highlighting instead")
-        spheres_added = False
+        print(f"ℹ️  Using vertex highlighting (3D markers unavailable: {str(e)})")
 
     # Print results
     if raw_similarities is not None:
-        most_similar_idx = np.argmax(raw_similarities)
-        if spheres_added:
-            print(f"🎯 Enhanced visualization with sphere highlighting...")
-            print(f"Source point (red sphere): vertex {source_point_idx}")
-            print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} marked with RED SPHERE")
-            print(f"Sphere radius - Source: {source_radius:.4f}, Target: {target_radius:.4f}")
-        else:
-            print(f"🎯 Visualization with vertex highlighting...")
-            print(f"Source point (red): vertex {source_point_idx}")
-            print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} in RED")
-
+        print(f"Source point (red): vertex {source_point_idx}")
+        print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} in RED")
         print(f"Most similar vertex similarity: {raw_similarities[most_similar_idx]:.4f}")
         print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
-
     else:
-        if spheres_added:
-            print(f"Source point marked with red sphere: vertex {source_point_idx}")
-            print(f"Sphere radius: {source_radius:.4f}")
-        else:
-            print(f"Source point highlighted in red: vertex {source_point_idx}")
+        print(f"Source point highlighted in red: vertex {source_point_idx}")
         print(f"Target mesh colored by similarity to source point")
         print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
 
