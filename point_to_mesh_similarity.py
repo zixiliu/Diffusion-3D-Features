@@ -491,7 +491,7 @@ def visualize_multi_point_correspondences(
     source_vertex_indices
 ):
     """
-    Visualize multiple point correspondences with colored spheres at correspondence locations.
+    Visualize multiple point correspondences with colored 3D markers at correspondence locations.
 
     Args:
         source_mesh: source mesh container
@@ -501,11 +501,7 @@ def visualize_multi_point_correspondences(
         source_vertex_indices: indices of source vertices (N,)
     """
 
-    # Calculate appropriate sphere radius for both meshes
-    source_radius = calculate_mesh_scale(source_mesh.vert)
-    target_radius = calculate_mesh_scale(target_mesh.vert)
-
-    print(f"🎨 Visualizing {len(correspondences)} correspondences with colored spheres:")
+    print(f"🎨 Visualizing {len(correspondences)} correspondences with colored 3D markers:")
     for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
         print(f"  Correspondence {i+1}: Source vertex {source_idx} ↔ Target vertex {target_idx} (similarity: {similarity:.4f})")
 
@@ -513,59 +509,49 @@ def visualize_multi_point_correspondences(
     source_mesh_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
     target_mesh_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
 
+    # Add vertex highlighting as backup
+    for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
+        source_mesh_colors[source_idx] = color
+        target_mesh_colors[target_idx] = color
+
     # Create the base mesh visualization
     d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
     mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
 
-    # Try to add colored spheres for each correspondence with error handling
-    spheres_added = False
+    # Try to add 3D markers (octahedrons) for better visibility
     try:
-        for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
-            # Source sphere
-            source_center = source_mesh.vert[source_idx]
-            source_sphere_verts, source_sphere_faces = create_sphere(source_center, source_radius)
-            source_sphere_colors = np.tile(color, (len(source_sphere_verts), 1))
+        # Extract correspondence indices and colors
+        source_indices = [corr[0] for corr in correspondences]
+        target_indices = [corr[1] for corr in correspondences]
 
-            # Target sphere
-            target_center = target_mesh.vert[target_idx]
-            target_sphere_verts, target_sphere_faces = create_sphere(target_center, target_radius)
-            target_sphere_colors = np.tile(color, (len(target_sphere_verts), 1))
+        # Create 3D markers for source mesh
+        source_highlight_verts, source_highlight_faces, source_highlight_colors = create_highlight_regions(
+            source_mesh.vert, source_mesh.face, source_indices, correspondence_colors
+        )
 
-            # Validate sphere geometry before adding
-            if (len(source_sphere_verts) > 0 and len(source_sphere_faces) > 0 and
-                len(target_sphere_verts) > 0 and len(target_sphere_faces) > 0):
-                # Add spheres to the existing visualization
-                mp.subplot(source_sphere_verts, source_sphere_faces, c=source_sphere_colors, s=[2, 2, 0], data=d)
-                mp.subplot(target_sphere_verts, target_sphere_faces, c=target_sphere_colors, s=[2, 2, 1], data=d)
+        # Create 3D markers for target mesh
+        target_highlight_verts, target_highlight_faces, target_highlight_colors = create_highlight_regions(
+            target_mesh.vert, target_mesh.face, target_indices, correspondence_colors
+        )
 
-        spheres_added = True
+        # Add the 3D markers to visualization
+        if len(source_highlight_verts) > 0:
+            mp.subplot(source_highlight_verts, source_highlight_faces, c=source_highlight_colors, s=[2, 2, 0], data=d)
+
+        if len(target_highlight_verts) > 0:
+            mp.subplot(target_highlight_verts, target_highlight_faces, c=target_highlight_colors, s=[2, 2, 1], data=d)
+
+        print(f"🎯 Enhanced visualization with 3D octahedron markers...")
 
     except Exception as e:
-        print(f"⚠️  Warning: Could not render spheres ({str(e)}), using vertex highlighting instead")
-        spheres_added = False
-
-        # Fallback to vertex coloring
-        source_mesh_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray
-        target_mesh_colors = np.ones((len(target_mesh.vert), 3)) * 0.7  # Gray
-
-        for i, ((source_idx, target_idx, similarity), color) in enumerate(zip(correspondences, correspondence_colors)):
-            source_mesh_colors[source_idx] = color
-            target_mesh_colors[target_idx] = color
-
-        # Recreate visualization with colored vertices
-        d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_mesh_colors, s=[2, 2, 0])
-        mp.subplot(target_mesh.vert, target_mesh.face, c=target_mesh_colors, s=[2, 2, 1], data=d)
-
-    print(f"\n🎯 Sphere Visualization Details:")
-    print(f"  - Source mesh sphere radius: {source_radius:.4f}")
-    print(f"  - Target mesh sphere radius: {target_radius:.4f}")
-    print(f"  - Each correspondence pair has matching colored spheres")
+        print(f"ℹ️  Using vertex highlighting (3D markers unavailable: {str(e)})")
 
     print(f"\n📊 Correspondence Statistics:")
     similarities = [corr[2] for corr in correspondences]
     print(f"  - Average similarity: {np.mean(similarities):.4f}")
     print(f"  - Min similarity: {np.min(similarities):.4f}")
     print(f"  - Max similarity: {np.max(similarities):.4f}")
+    print(f"  - Each correspondence pair has matching colors on both meshes")
 
 def run_multi_point_correspondence_analysis(
     source_mesh,
