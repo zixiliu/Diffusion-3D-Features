@@ -19,11 +19,26 @@ def run_rendering(device, mesh, mesh_vertices, num_views, H, W, add_angle_azi=0,
     scaling_factor = 0.65
     distance = torch.sqrt((bb_diff * bb_diff).sum())
     distance *= scaling_factor
-    steps = int(math.sqrt(num_views))
-    end = 360 - 360/steps
-    elevation = torch.linspace(start = 0 , end = end , steps = steps).repeat(steps) + add_angle_ele
-    azimuth = torch.linspace(start = 0 , end = end , steps = steps)
-    azimuth = torch.repeat_interleave(azimuth, steps) + add_angle_azi
+
+    # Generate exactly num_views camera angles
+    if num_views == 1:
+        elevation = torch.tensor([0.0]) + add_angle_ele
+        azimuth = torch.tensor([0.0]) + add_angle_azi
+    else:
+        # For multiple views, distribute them evenly around the sphere
+        # Use a spiral pattern or uniform distribution
+        azimuth = torch.linspace(0, 360 * (1 - 1/num_views), num_views) + add_angle_azi
+
+        # For elevation, use a pattern that covers different heights
+        if num_views <= 4:
+            elevation = torch.linspace(0, 45, num_views) + add_angle_ele
+        else:
+            # Create a more complex pattern for better coverage
+            elevation = torch.zeros(num_views)
+            for i in range(num_views):
+                # Alternate between different elevation angles
+                elevation[i] = (i % 3) * 30  # 0, 30, 60 degrees pattern
+            elevation = elevation + add_angle_ele
 
     # Ensure bbox_center has the right shape: flatten it first, then expand to match batch size
     batch_size = azimuth.shape[0]
