@@ -105,28 +105,53 @@ def visualize_point_similarity(
     target_mesh,
     source_point_idx,
     similarity_colors,
+    raw_similarities=None,
+    colormap='viridis'
 ):
     """
     Visualize the source mesh with highlighted point and target mesh with similarity colors.
+    Also highlights the most similar vertex in bold red on the target mesh.
 
     Args:
         source_mesh: source mesh container
         target_mesh: target mesh container
         source_point_idx: index of the specific point on source mesh
         similarity_colors: normalized similarity values for coloring target mesh
+        raw_similarities: raw similarity scores (optional, for highlighting most similar vertex)
+        colormap: matplotlib colormap name
     """
+    import matplotlib.pyplot as plt
 
     # Create colors for source mesh - highlight the specific point
     source_colors = np.ones((len(source_mesh.vert), 3)) * 0.7  # Gray color
     source_colors[source_point_idx] = [1.0, 0.0, 0.0]  # Red for the specific point
 
-    # Create subplot with source mesh (left) and target mesh (right) with similarity colors
-    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
-    mp.subplot(target_mesh.vert, target_mesh.face, c=similarity_colors, s=[2, 2, 1], data=d)
+    # Convert similarity colors to RGB using the specified colormap
+    cmap = plt.get_cmap(colormap)
+    target_colors_rgb = cmap(similarity_colors)[:, :3]  # Get RGB, ignore alpha
 
-    print(f"Source point (red): vertex {source_point_idx}")
-    print(f"Target mesh colored by similarity to source point")
-    print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
+    # Create colors for target mesh
+    if raw_similarities is not None:
+        # Find the most similar vertex on target mesh
+        most_similar_idx = np.argmax(raw_similarities)
+
+        # Override the most similar vertex with bold red
+        target_colors_rgb[most_similar_idx] = [1.0, 0.0, 0.0]
+
+        print(f"🎯 Enhanced visualization with highlighted most similar vertex...")
+        print(f"Source point (red): vertex {source_point_idx}")
+        print(f"Target mesh: colored by similarity + MOST SIMILAR vertex {most_similar_idx} in BOLD RED")
+        print(f"Most similar vertex similarity: {raw_similarities[most_similar_idx]:.4f}")
+        print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
+
+    else:
+        print(f"Source point (red): vertex {source_point_idx}")
+        print(f"Target mesh colored by similarity to source point")
+        print(f"Similarity range: {similarity_colors.min():.3f} to {similarity_colors.max():.3f}")
+
+    # Create the visualization with RGB colors (no colormap parameter needed)
+    d = mp.subplot(source_mesh.vert, source_mesh.face, c=source_colors, s=[2, 2, 0])
+    mp.subplot(target_mesh.vert, target_mesh.face, c=target_colors_rgb, s=[2, 2, 1], data=d)
 
 # Example usage function
 def run_point_similarity_analysis(
@@ -171,12 +196,13 @@ def run_point_similarity_analysis(
         num_views=num_views
     )
 
-    # Visualize results
+    # Visualize results with highlighting of most similar vertex
     visualize_point_similarity(
         source_mesh=source_mesh,
         target_mesh=target_mesh,
         source_point_idx=source_point_idx,
-        similarity_colors=similarity_colors
+        similarity_colors=similarity_colors,
+        raw_similarities=raw_similarities  # Pass raw similarities for highlighting
     )
 
     return similarity_colors, raw_similarities, source_point_idx, closest_distance
