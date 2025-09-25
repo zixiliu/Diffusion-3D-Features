@@ -156,7 +156,8 @@ def point_similarity_colormap(
     source_mesh,
     target_mesh,
     source_point_3d,
-    prompt,
+    source_prompt,
+    target_prompt=None,
     num_views=100,
     **kwargs
 ):
@@ -170,7 +171,8 @@ def point_similarity_colormap(
         source_mesh: source mesh container
         target_mesh: target mesh container
         source_point_3d: 3D coordinates (x, y, z) as array-like or torch tensor
-        prompt: text prompt for feature extraction
+        source_prompt: text prompt for source mesh feature extraction
+        target_prompt: text prompt for target mesh feature extraction (if None, uses source_prompt)
         num_views: number of views for rendering
         **kwargs: additional arguments for get_features_per_vertex
 
@@ -180,6 +182,10 @@ def point_similarity_colormap(
         source_point_idx: index of the closest vertex to the input 3D point
         closest_distance: distance from input point to closest vertex
     """
+
+    # Use source_prompt for target if target_prompt is not provided
+    if target_prompt is None:
+        target_prompt = source_prompt
 
     # Find the closest vertex to the input 3D point
     source_point_idx, closest_distance = find_closest_vertex(source_point_3d, source_mesh.vert)
@@ -194,12 +200,12 @@ def point_similarity_colormap(
 
     # print("Computing features for source mesh...")
     source_features = get_features_per_vertex(
-        device, pipe, dino_model, source_torch_mesh, prompt, num_views, **kwargs
+        device, pipe, dino_model, source_torch_mesh, source_prompt, num_views, **kwargs
     )
 
     # print("Computing features for target mesh...")
     target_features = get_features_per_vertex(
-        device, pipe, dino_model, target_torch_mesh, prompt, num_views, **kwargs
+        device, pipe, dino_model, target_torch_mesh, target_prompt, num_views, **kwargs
     )
 
     # Get the feature vector for the specific source point
@@ -411,7 +417,8 @@ def multi_point_correspondence_analysis(
     source_mesh,
     target_mesh,
     source_points_3d,
-    prompt,
+    source_prompt,
+    target_prompt=None,
     num_views=100,
     **kwargs
 ):
@@ -425,7 +432,8 @@ def multi_point_correspondence_analysis(
         source_mesh: source mesh container
         target_mesh: target mesh container
         source_points_3d: 3D coordinates (N, 3) as array-like or torch tensor
-        prompt: text prompt for feature extraction
+        source_prompt: text prompt for source mesh feature extraction
+        target_prompt: text prompt for target mesh feature extraction (if None, uses source_prompt)
         num_views: number of views for rendering
         **kwargs: additional arguments for get_features_per_vertex
 
@@ -435,6 +443,10 @@ def multi_point_correspondence_analysis(
         source_vertex_indices: indices of closest vertices to input 3D points (N,)
         closest_distances: distances from input points to closest vertices (N,)
     """
+
+    # Use source_prompt for target if target_prompt is not provided
+    if target_prompt is None:
+        target_prompt = source_prompt
 
     # Convert input to numpy array
     source_points_3d = np.array(source_points_3d)
@@ -457,12 +469,12 @@ def multi_point_correspondence_analysis(
 
     print("Computing features for source mesh...")
     source_features = get_features_per_vertex(
-        device, pipe, dino_model, source_torch_mesh, prompt, num_views, **kwargs
+        device, pipe, dino_model, source_torch_mesh, source_prompt, num_views, **kwargs
     )
 
     print("Computing features for target mesh...")
     target_features = get_features_per_vertex(
-        device, pipe, dino_model, target_torch_mesh, prompt, num_views, **kwargs
+        device, pipe, dino_model, target_torch_mesh, target_prompt, num_views, **kwargs
     )
 
     # Find correspondences for each source point
@@ -648,7 +660,8 @@ def run_multi_point_correspondence_analysis(
     device,
     pipe,
     dino_model,
-    prompt="a textured 3D model",
+    source_prompt="a textured 3D model",
+    target_prompt=None,
     num_views=50
 ):
     """
@@ -661,7 +674,8 @@ def run_multi_point_correspondence_analysis(
         device: torch device
         pipe: diffusion pipeline
         dino_model: DINO model
-        prompt: text prompt for feature extraction
+        source_prompt: text prompt for source mesh feature extraction
+        target_prompt: text prompt for target mesh feature extraction (if None, uses source_prompt)
         num_views: number of views for rendering
 
     Returns:
@@ -687,7 +701,8 @@ def run_multi_point_correspondence_analysis(
         source_mesh=source_mesh,
         target_mesh=target_mesh,
         source_points_3d=source_points_3d,
-        prompt=prompt,
+        source_prompt=source_prompt,
+        target_prompt=target_prompt,
         num_views=num_views
     )
 
