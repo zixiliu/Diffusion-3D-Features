@@ -665,6 +665,7 @@ def run_multi_point_correspondence_analysis(
         correspondence_colors: RGB colors for each correspondence pair (N, 3)
         source_vertex_indices: indices of closest vertices to input 3D points (N,)
         closest_distances: distances from input points to closest vertices (N,)
+        target_points_3d: 3D coordinates of corresponding target vertices (N, 3)
     """
 
     # Find correspondences
@@ -679,6 +680,10 @@ def run_multi_point_correspondence_analysis(
         num_views=num_views
     )
 
+    # Extract 3D coordinates of target vertices
+    target_vertex_indices = [corr[1] for corr in correspondences]
+    target_points_3d = np.array([target_mesh.vert[idx] for idx in target_vertex_indices])
+
     # Visualize results
     visualize_multi_point_correspondences(
         source_mesh=source_mesh,
@@ -688,4 +693,4 @@ def run_multi_point_correspondence_analysis(
         source_vertex_indices=source_vertex_indices
     )
 
-    return correspondences, correspondence_colors, source_vertex_indices, closest_distances
+    return correspondences, correspondence_colors, source_vertex_indices, closest_distances, target_points_3d
