@@ -167,3 +167,45 @@ def gmm(a, b):
     correspondence_matrix = torch.norm(gram_matrix_a - gram_matrix_b, p='fro', dim=2)
 
     return correspondence_matrix
+
+
+################################## Custom ######################################
+
+def remesh_mesh_pair(source_mesh_path, target_mesh_path, num_points=10000, alpha=0.005):
+    import open3d as o3d
+
+    """
+    Remesh two meshes using Poisson disk sampling + alpha shape reconstruction.
+
+    Args:
+        source_mesh_path (str): Path to the source mesh file (.obj).
+        target_mesh_path (str): Path to the target mesh file (.obj).
+        num_points (int): Number of points for Poisson disk sampling.
+        alpha (float): Alpha value for alpha-shape reconstruction.
+
+    Returns:
+        (str, str): File paths of the saved remeshed source and target meshes.
+    """
+    # Load meshes
+    source_mesh = o3d.io.read_triangle_mesh(source_mesh_path)
+    target_mesh = o3d.io.read_triangle_mesh(target_mesh_path)
+
+    # Convert to point clouds
+    source_pcd = source_mesh.sample_points_poisson_disk(number_of_points=num_points)
+    target_pcd = target_mesh.sample_points_poisson_disk(number_of_points=num_points)
+
+    # Alpha-shape reconstruction
+    source_mesh_remesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(source_pcd, alpha)
+    source_mesh_remesh.compute_vertex_normals()
+    target_mesh_remesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(target_pcd, alpha)
+    target_mesh_remesh.compute_vertex_normals()
+
+    # Save remeshed meshes
+    source_mesh_remesh_filename = source_mesh_path[:-4] + "_remesh.obj"
+    target_mesh_remesh_filename = target_mesh_path[:-4] + "_remesh.obj"
+
+    o3d.io.write_triangle_mesh(source_mesh_remesh_filename, source_mesh_remesh)
+    o3d.io.write_triangle_mesh(target_mesh_remesh_filename, target_mesh_remesh)
+
+    print(f"✅ Re-mesh complete: {source_mesh_remesh_filename}, {target_mesh_remesh_filename}")
+    return source_mesh_remesh_filename, target_mesh_remesh_filename
