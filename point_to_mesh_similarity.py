@@ -39,7 +39,7 @@ def find_closest_vertices_batch(points_3d, mesh_vertices):
 
     Args:
         points_3d: 3D coordinates as array-like (N, 3) or torch tensor
-        mesh_vertices: mesh vertices as numpy array or torch tensor (M, 3)
+        mesh_vertices: mesh vertices as numpy array or torch tensor (M, 3) or (M, 6)
 
     Returns:
         closest_vertex_indices: array of indices of closest vertices (N,)
@@ -54,6 +54,10 @@ def find_closest_vertices_batch(points_3d, mesh_vertices):
     points_3d = np.array(points_3d)
     if points_3d.ndim == 1:
         points_3d = points_3d.reshape(1, 3)  # Handle single point case
+
+    # Ensure mesh_vertices only uses the first 3 columns (x, y, z coordinates)
+    if mesh_vertices.shape[1] > 3:
+        mesh_vertices = mesh_vertices[:, :3]
 
     # Compute distances from all points to all vertices
     distances = np.linalg.norm(mesh_vertices[np.newaxis, :, :] - points_3d[:, np.newaxis, :], axis=2)
