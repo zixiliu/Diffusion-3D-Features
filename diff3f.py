@@ -88,7 +88,7 @@ def get_features_per_vertex(
     batched_renderings, normal_batched_renderings, camera, depth = batch_render(
         device, mesh, mesh.verts_list()[0], num_views, H, W, use_normal_map
     )
-    print("Rendering complete")
+    # print("Rendering complete")
     if use_normal_map:
         normal_batched_renderings = normal_batched_renderings.cpu()
     batched_renderings = batched_renderings.cpu()
@@ -171,8 +171,7 @@ def get_features_per_vertex(
     idxs = (ft_per_vertex_count != 0)[:, 0]
     ft_per_vertex[idxs, :] = ft_per_vertex[idxs, :] / ft_per_vertex_count[idxs, :]
     missing_features = len(ft_per_vertex_count[ft_per_vertex_count == 0])
-    print("Number of missing features: ", missing_features)
-    print("Copied features from nearest vertices")
+    print("Number of missing features: ", missing_features, ". Copied features from nearest vertices.")
 
     if missing_features > 0:
         filled_indices = ft_per_vertex_count[:, 0] != 0
