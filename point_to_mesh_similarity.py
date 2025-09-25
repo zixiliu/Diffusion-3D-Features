@@ -192,12 +192,12 @@ def point_similarity_colormap(
     source_torch_mesh = convert_mesh_container_to_torch_mesh(source_mesh, device)
     target_torch_mesh = convert_mesh_container_to_torch_mesh(target_mesh, device)
 
-    print("Computing features for source mesh...")
+    # print("Computing features for source mesh...")
     source_features = get_features_per_vertex(
         device, pipe, dino_model, source_torch_mesh, prompt, num_views, **kwargs
     )
 
-    print("Computing features for target mesh...")
+    # print("Computing features for target mesh...")
     target_features = get_features_per_vertex(
         device, pipe, dino_model, target_torch_mesh, prompt, num_views, **kwargs
     )
@@ -671,6 +671,13 @@ def run_multi_point_correspondence_analysis(
         closest_distances: distances from input points to closest vertices (N,)
         target_points_3d: 3D coordinates of corresponding target vertices (N, 3)
     """
+
+    # Handle mesh dimensions.
+    if source_mesh.vert.shape[1] > 3:
+        source_mesh.vert = source_mesh.vert[:, 0:3]
+    if target_mesh.vert.shape[1] > 3:
+        target_mesh.vert = target_mesh.vert[:, 0:3]
+
 
     # Find correspondences
     correspondences, correspondence_colors, source_vertex_indices, closest_distances = multi_point_correspondence_analysis(
