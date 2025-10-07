@@ -1,6 +1,6 @@
 # Object files
 meshes/
-
+plotly_meshes.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
