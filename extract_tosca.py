@@ -3,12 +3,20 @@ import os
 import glob
 from diff3f import get_features_per_vertex
 from time import time
-from .utils import convert_mesh_container_to_torch_mesh
+# Handle both package import and direct script execution
+try:
+    from .utils import convert_mesh_container_to_torch_mesh
+    from .dataloaders.mesh_container import MeshContainer
+    from .diffusion import init_pipe
+    from .dino import init_dino
+except ImportError:
+    from utils import convert_mesh_container_to_torch_mesh
+    from dataloaders.mesh_container import MeshContainer
+    from diffusion import init_pipe
+    from dino import init_dino
+
 import configparser
 from datetime import datetime
-from .dataloaders.mesh_container import MeshContainer
-from .diffusion import init_pipe
-from .dino import init_dino
 
 
 config = configparser.ConfigParser()

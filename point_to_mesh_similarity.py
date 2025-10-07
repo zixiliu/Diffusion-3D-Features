@@ -1,7 +1,11 @@
 import torch
 import numpy as np
 from diff3f import get_features_per_vertex
-from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity
+# Handle both package import and direct script execution
+try:
+    from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity
+except ImportError:
+    from utils import convert_mesh_container_to_torch_mesh, cosine_similarity
 import meshplot as mp
 import pdb
 import webbrowser

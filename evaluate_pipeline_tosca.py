@@ -1,14 +1,23 @@
 import torch
 import glob
 from tqdm import tqdm
-from .setup_args import default_arg_parser, init_parse_argparse_default_params
-from .dataloaders.tosca import TOSCA
-from .dataloaders.point_cloud_dataset import PointCloudDataset
-# from visualization import visualize_pair_corr
-from .correspondence import ShapeCorr
+# Handle both package import and direct script execution
+try:
+    from .setup_args import default_arg_parser, init_parse_argparse_default_params
+    from .dataloaders.tosca import TOSCA
+    from .dataloaders.point_cloud_dataset import PointCloudDataset
+    from .correspondence import ShapeCorr
+    from .utils import cosine_similarity, solve_correspondence, gmm
+except ImportError:
+    from setup_args import default_arg_parser, init_parse_argparse_default_params
+    from dataloaders.tosca import TOSCA
+    from dataloaders.point_cloud_dataset import PointCloudDataset
+    from correspondence import ShapeCorr
+    from utils import cosine_similarity, solve_correspondence, gmm
+
 import torch
 import glob
-from .utils import cosine_similarity, solve_correspondence, gmm
+# from visualization import visualize_pair_corr
 from tqdm import tqdm
 import pandas as pd
 import numpy as np

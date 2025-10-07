@@ -1,17 +1,28 @@
 import torch
 from diff3f import get_features_per_vertex
 from time import time
-from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
-from .dataloaders.mesh_container import MeshContainer
-from .diffusion import init_pipe
-from .dino import init_dino
-from .functional_map import compute_surface_map
+# Handle both package import and direct script execution
+try:
+    from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
+    from .dataloaders.mesh_container import MeshContainer
+    from .diffusion import init_pipe
+    from .dino import init_dino
+    from .functional_map import compute_surface_map
+    from .point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
+    from .utils import remesh_mesh_pair
+except ImportError:
+    from utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
+    from dataloaders.mesh_container import MeshContainer
+    from diffusion import init_pipe
+    from dino import init_dino
+    from functional_map import compute_surface_map
+    from point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
+    from utils import remesh_mesh_pair
+
 import importlib
 import meshplot as mp
-from .point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
 import numpy as np
 import open3d
-from .utils import remesh_mesh_pair
 
 
 def main(source_mesh_path, target_mesh_path, source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bottle", num_views = 8, meshplot_browser=True):
