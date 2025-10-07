@@ -3,6 +3,10 @@ import numpy as np
 from diff3f import get_features_per_vertex
 from utils import convert_mesh_container_to_torch_mesh, cosine_similarity
 import meshplot as mp
+import pdb
+import webbrowser
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 
 def find_closest_vertex(point_3d, mesh_vertices):
     """
@@ -558,7 +562,8 @@ def visualize_multi_point_correspondences(
     target_mesh,
     correspondences,
     correspondence_colors,
-    source_vertex_indices
+    source_vertex_indices,
+    meshplot_browser=False
 ):
     """
     Visualize multiple point correspondences by combining mesh + markers into single geometries.
@@ -611,9 +616,63 @@ def visualize_multi_point_correspondences(
         )
 
         # Create visualization with combined geometries (no data= parameter needed)
-        d = mp.subplot(source_combined_verts, source_combined_faces, c=source_final_colors, s=[2, 2, 0])
-        mp.subplot(target_combined_verts, target_combined_faces, c=target_final_colors, s=[2, 2, 1], data=d)
+        
+        breakpoint()
+        if meshplot_browser:
+            # Create the subplot figure with 1 row and 2 columns
+            fig = make_subplots(rows=1, cols=2,
+                                specs=[[{'type': 'scene'}, {'type': 'scene'}]],
+                                subplot_titles=("Source Mesh", "Target Mesh"))
+            # Source mesh
+            fig.add_trace(
+                go.Mesh3d(
+                    x=source_combined_verts[:, 0],
+                    y=source_combined_verts[:, 1],
+                    z=source_combined_verts[:, 2],
+                    i=source_combined_faces[:, 0],
+                    j=source_combined_faces[:, 1],
+                    k=source_combined_faces[:, 2],
+                    vertexcolor=source_final_colors,  # shape: (n_verts, 3) or (n_verts, 4)
+                    name='Source'
+                ),
+                row=1, col=1
+            )
+            # Target mesh
+            fig.add_trace(
+                go.Mesh3d(
+                    x=target_combined_verts[:, 0],
+                    y=target_combined_verts[:, 1],
+                    z=target_combined_verts[:, 2],
+                    i=target_combined_faces[:, 0],
+                    j=target_combined_faces[:, 1],
+                    k=target_combined_faces[:, 2],
+                    vertexcolor=target_final_colors,
+                    name='Target'
+                ),
+                row=1, col=2
+            )
+            # Layout adjustments (optional)
+            fig.update_layout(
+                width=1200,
+                height=600,
+                title_text="Source and Target Meshes Side-by-Side"
+            )
+            # Save to HTML and open in browser
+            html_filename = "plotly_meshes.html"
+            fig.write_html(html_filename)
+            webbrowser.open(html_filename)
 
+
+            ### If stick with meshplot
+            # p = mp.plot(source_combined_verts, source_combined_faces, c=source_final_colors)
+            # p.save("source.html")
+            # p2 = mp.plot(target_combined_verts, target_combined_faces, c=target_final_colors)
+            # p2.save("target.html")
+            # webbrowser.open("source.html")
+            # webbrowser.open("target.html")
+        else:
+            d = mp.subplot(source_combined_verts, source_combined_faces, c=source_final_colors, s=[2, 2, 0])
+            mp.subplot(target_combined_verts, target_combined_faces, c=target_final_colors, s=[2, 2, 1], data=d)
         print(f"✅ Combined mesh + 3D octahedron markers visualization created!")
         print(f"   Each correspondence pair has matching colored 3D octahedrons")
         print(f"   Source mesh: {len(source_mesh.vert)} vertices + {len(source_highlight_verts)} marker vertices")
@@ -662,7 +721,8 @@ def run_multi_point_correspondence_analysis(
     dino_model,
     source_prompt="a textured 3D model",
     target_prompt=None,
-    num_views=50
+    num_views=50,
+    meshplot_browser=False
 ):
     """
     Complete pipeline for multi-point correspondence analysis.
@@ -716,7 +776,8 @@ def run_multi_point_correspondence_analysis(
         target_mesh=target_mesh,
         correspondences=correspondences,
         correspondence_colors=correspondence_colors,
-        source_vertex_indices=source_vertex_indices
+        source_vertex_indices=source_vertex_indices,
+        meshplot_browser=meshplot_browser
     )
 
     return correspondences, correspondence_colors, source_vertex_indices, closest_distances, target_points_3d
