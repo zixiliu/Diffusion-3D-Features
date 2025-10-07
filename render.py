@@ -3,11 +3,13 @@ from pytorch3d.renderer.mesh.rasterizer import RasterizationSettings, MeshRaster
 from pytorch3d.renderer.mesh.shader import HardPhongShader
 from pytorch3d.renderer import MeshRenderer
 from pytorch3d.renderer.lighting import PointLights
-from .normal_shading import HardPhongNormalShader
 import torch
 import math
 import time
-
+try:
+    from .normal_shading import HardPhongNormalShader
+except ImportError:
+    from normal_shading import HardPhongNormalShader
 
 @torch.no_grad()
 def run_rendering(device, mesh, mesh_vertices, num_views, H, W, add_angle_azi=0, add_angle_ele=0, use_normal_map=False):
