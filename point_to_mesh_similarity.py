@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from diff3f import get_features_per_vertex
-from utils import convert_mesh_container_to_torch_mesh, cosine_similarity
+from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity
 import meshplot as mp
 import pdb
 import webbrowser
@@ -616,7 +616,7 @@ def visualize_multi_point_correspondences(
         )
 
         # Create visualization with combined geometries (no data= parameter needed)
-        
+
         breakpoint()
         if meshplot_browser:
             # Create the subplot figure with 1 row and 2 columns

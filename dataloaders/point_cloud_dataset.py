@@ -1,8 +1,8 @@
-from utils import str2bool
+from ..utils import str2bool
 import os
 import os.path
 import numpy as np
-from utils import to_numpy, to_tensor
+from ..utils import to_numpy, to_tensor
 import torch
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
@@ -58,7 +58,7 @@ class PointCloudDataset(Dataset):
         from dataloaders.snis import SNIS
         pair_str = "_".join([str(i) for i in self.pair_indices[index]])
         id1, id2 = self.pair_indices[index % len(self.pair_indices)]
-        
+
         if (
             self.hparams.OVERFIT_singel_pair is not None
             and self.hparams.OVERFIT_singel_pair is not False

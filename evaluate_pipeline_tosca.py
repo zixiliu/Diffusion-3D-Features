@@ -1,18 +1,18 @@
 import torch
 import glob
 from tqdm import tqdm
-from setup_args import default_arg_parser, init_parse_argparse_default_params
-from dataloaders.tosca import TOSCA
-from dataloaders.point_cloud_dataset import PointCloudDataset
+from .setup_args import default_arg_parser, init_parse_argparse_default_params
+from .dataloaders.tosca import TOSCA
+from .dataloaders.point_cloud_dataset import PointCloudDataset
 # from visualization import visualize_pair_corr
-from correspondence import ShapeCorr
+from .correspondence import ShapeCorr
 import torch
 import glob
-from utils import cosine_similarity, solve_correspondence, gmm
+from .utils import cosine_similarity, solve_correspondence, gmm
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
-from pathlib import Path 
+from pathlib import Path
 import os
 
 
@@ -27,7 +27,7 @@ paths = sorted([str(path) for path in list(Path(results_path).rglob("*.pt"))],ke
 
 # Make sure to keep the dataset at data/datasets/{dataset_name} or modify inside PointCloudDataset
 
-def main(): 
+def main():
     parser = default_arg_parser(description="Point correspondence")
     dataset_name = "tosca"
     task_name = "shape_corr"

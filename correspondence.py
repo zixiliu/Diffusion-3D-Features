@@ -7,7 +7,7 @@ from dataloaders.point_cloud_dataset import (
 )
 import torch
 from torch import Tensor
-from utils import to_numpy
+from .utils import to_numpy
 from torchmetrics import Accuracy
 import torch
 import torch.nn.functional as F

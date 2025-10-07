@@ -1,7 +1,7 @@
 import argparse
 import os
 from argparse import ArgumentDefaultsHelpFormatter
-from utils import str2bool
+from .utils import str2bool
 
 
 def get_non_default(parsed, parser):

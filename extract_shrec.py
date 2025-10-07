@@ -3,12 +3,12 @@ import os
 import glob
 from diff3f import get_features_per_vertex
 from time import time
-from utils import convert_mesh_container_to_torch_mesh
+from .utils import convert_mesh_container_to_torch_mesh
 import configparser
 from datetime import datetime
-from dataloaders.mesh_container import MeshContainer
-from diffusion import init_pipe
-from dino import init_dino
+from .dataloaders.mesh_container import MeshContainer
+from .diffusion import init_pipe
+from .dino import init_dino
 
 
 config = configparser.ConfigParser()
@@ -89,7 +89,7 @@ def compute_features():
             mesh_vertices = mesh.verts_list()[0]
             features = get_features_per_vertex(
                 device=device,
-                pipe=pipe, 
+                pipe=pipe,
                 dino_model=dino_model,
                 mesh=mesh,
                 prompt=prompt,

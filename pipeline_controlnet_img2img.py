@@ -1,4 +1,4 @@
-# Edited from diffusers; overrides library 
+# Edited from diffusers; overrides library
 
 # Copyright 2023 The HuggingFace Team. All rights reserved.
 #
@@ -26,7 +26,7 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 from diffusers.image_processor import PipelineImageInput, VaeImageProcessor
 from diffusers.loaders import FromSingleFileMixin, LoraLoaderMixin, TextualInversionLoaderMixin
 from diffusers.models import AutoencoderKL, ControlNetModel
-from unet_2d_condition import UNet2DConditionModel
+from .unet_2d_condition import UNet2DConditionModel
 from diffusers.models.lora import adjust_lora_scale_text_encoder
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
