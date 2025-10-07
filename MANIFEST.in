@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include *.yaml
+include *.py
+recursive-include meshes *.obj *.off
+recursive-include assets *.jpg
+recursive-include dataloaders *.py *.md *.sh
+recursive-include pyFM *.py *.jpg *.md
+exclude *.ipynb
+exclude *.zip
