@@ -25,23 +25,23 @@ setup(
     ],
     python_requires=">=3.10",
     install_requires=[
-        "matplotlib>=3.7.1",
-        "numpy>=1.25.0",
-        "scikit-learn>=1.2.2",
-        "scipy>=1.10.1",
-        "torch>=2.1.0",
-        "torchvision>=0.17.1",
-        "torchaudio>=2.1.0",
+        "matplotlib>=3.10.6",
+        "numpy>=2.2.6",
+        "scikit-learn>=1.7.2",
+        "scipy>=1.15.3",
+        "torch>=2.8.0",
+        "torchvision>=0.23.0",
+        "torchaudio>=2.8.0",
         "diffusers==0.21.4",
         "einops==0.7.0",
-        "huggingface-hub==0.17.3",
+        "huggingface-hub>=0.14.1",
         "meshio==5.3.4",
-        "opencv-python==4.8.1.78",
+        "opencv-python>=4.12.0.88",
         "plyfile==1.0.1",
-        "transformers==4.34.1",
+        "transformers>=4.30.2",
         "trimesh==4.0.0",
         "potpourri3d==1.0.0",
-        "robust_laplacian==0.2.7",
+        "robust-laplacian==0.2.7",
     ],
     extras_require={
         "dev": [
@@ -51,7 +51,7 @@ setup(
             "jupyter",
         ],
         "gpu": [
-            "xformers==0.0.21",
+            "xformers>=0.0.32",
         ]
     },
     entry_points={
