@@ -209,3 +209,31 @@ def remesh_mesh_pair(source_mesh_path, target_mesh_path, num_points=10000, alpha
 
     print(f"✅ Re-mesh complete: {source_mesh_remesh_filename}, {target_mesh_remesh_filename}")
     return source_mesh_remesh_filename, target_mesh_remesh_filename
+
+
+def remesh_mesh_pair_mesh(source_mesh, target_mesh, num_points=10000, alpha=0.005):
+    import open3d as o3d
+
+    """
+    Remesh two meshes using Poisson disk sampling + alpha shape reconstruction.
+
+    Args:
+        source_mesh_path (str): Path to the source mesh file (.obj).
+        target_mesh_path (str): Path to the target mesh file (.obj).
+        num_points (int): Number of points for Poisson disk sampling.
+        alpha (float): Alpha value for alpha-shape reconstruction.
+
+    Returns:
+        (str, str): File paths of the saved remeshed source and target meshes.
+    """
+    # Convert to point clouds
+    source_pcd = source_mesh.sample_points_poisson_disk(number_of_points=num_points)
+    target_pcd = target_mesh.sample_points_poisson_disk(number_of_points=num_points)
+
+    # Alpha-shape reconstruction
+    source_mesh_remesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(source_pcd, alpha)
+    source_mesh_remesh.compute_vertex_normals()
+    target_mesh_remesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(target_pcd, alpha)
+    target_mesh_remesh.compute_vertex_normals()
+    print(f"✅ Re-mesh complete")
+    return source_mesh_remesh, target_mesh_remesh

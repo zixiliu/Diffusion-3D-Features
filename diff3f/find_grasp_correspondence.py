@@ -2,34 +2,19 @@ import torch
 from diff3f.diff3f import get_features_per_vertex
 from time import time
 # Handle both package import and direct script execution
-try:
-    from .utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
-    from .dataloaders.mesh_container import MeshContainer
-    from .diffusion import init_pipe
-    from .dino import init_dino
-    from .functional_map import compute_surface_map
-    from .point_to_mesh_similarity import (
-        run_point_similarity_analysis,
-        point_similarity_colormap,
-        visualize_point_similarity,
-        run_multi_point_correspondence_analysis,
-    )
-    from .utils import remesh_mesh_pair
 
-except ImportError:
-    from diff3f.utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
-    from diff3f.dataloaders.mesh_container import MeshContainer
-    from diff3f.diffusion import init_pipe
-    from diff3f.dino import init_dino
-    from diff3f.functional_map import compute_surface_map
-    from diff3f.point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
-    from diff3f.utils import remesh_mesh_pair
+from diff3f.utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
+from diff3f.dataloaders.mesh_container import MeshContainer
+from diff3f.diffusion import init_pipe
+from diff3f.dino import init_dino
+from diff3f.functional_map import compute_surface_map
+from diff3f.point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
+from diff3f.utils import remesh_mesh_pair, remesh_mesh_pair_mesh
 
 import importlib
 import meshplot as mp
 import numpy as np
-import open3d
-
+import open3d as o3d
 
 def main(source_mesh_path, target_mesh_path, source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bottle", num_views = 8, meshplot_browser=True):
     # Set up device
@@ -77,6 +62,66 @@ def main(source_mesh_path, target_mesh_path, source_points_3d, remesh=True, sour
 
     return target_points_3d
 
+
+
+def convert_mesh_container_to_torch_mesh(input_mesh):
+    # Convert Open3D vectors to numpy arrays
+    verts = np.asarray(input_mesh.vertices)
+    faces = np.asarray(input_mesh.triangles)
+    mesh = MeshContainer(verts, faces)
+    return mesh
+
+
+def find_corr_mesh(source_mesh, target_mesh, source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bottle", num_views = 8, meshplot_browser=True):
+    # Set up device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    print("Initializing diffusion pipeline...")
+    pipe = init_pipe(device)
+
+    print("Initializing DINO model...")
+    dino_model = init_dino(device)
+
+    print("Models initialized successfully!")
+
+
+    if remesh:
+        source_mesh, target_mesh = remesh_mesh_pair_mesh(
+            source_mesh,
+            target_mesh,
+            num_points=10000,
+            alpha=0.005
+        )
+
+    ## convert from open3d mesh to meshcontainer
+    source_mesh = convert_mesh_container_to_torch_mesh(source_mesh)
+    target_mesh = convert_mesh_container_to_torch_mesh(target_mesh)
+
+    print(f"Source mesh: {len(source_mesh.vert)} vertices, {len(source_mesh.face)} faces")
+    print(f"Target mesh: {len(target_mesh.vert)} vertices, {len(target_mesh.face)} faces")
+
+    # Run the complete analysis pipeline
+    similarity_colors, raw_similarities, source_point_idx, closest_distance, target_points_3d = run_multi_point_correspondence_analysis(
+        source_mesh=source_mesh,
+        target_mesh=target_mesh,
+        source_points_3d=source_points_3d,
+        device=device,
+        pipe=pipe,
+        dino_model=dino_model,
+        source_prompt=source_prompt,
+        target_prompt=target_prompt,
+        num_views=num_views,
+        meshplot_browser=meshplot_browser
+    )
+
+    print("\n➡️ target_points_3d = \n", target_points_3d)
+    print("\n✅ Analysis complete!")
+
+    return target_points_3d
+
+
+
 if __name__ == "__main__":
 
     # example source points 3d
@@ -86,4 +131,7 @@ if __name__ == "__main__":
     p4 = [-0.01596961,  0.03464369, -0.02075735]
     source_points_3d = np.array([p1, p2, p3, p4])
 
-    main(source_mesh_path="meshes/oakink_beaker_decomp2.obj", target_mesh_path="meshes/oakink_bowl_decomp2.obj", source_points_3d=source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bowl", num_views=4)
+    # main(source_mesh_path="meshes/oakink_beaker_decomp2.obj", target_mesh_path="meshes/oakink_bowl_decomp2.obj", source_points_3d=source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bowl", num_views=4)
+
+
+    find_corr_mesh(source_mesh=o3d.io.read_triangle_mesh("meshes/oakink_beaker_decomp2.obj"), target_mesh=o3d.io.read_triangle_mesh("meshes/oakink_bowl_decomp2.obj"), source_points_3d=source_points_3d, remesh=True, source_prompt="beaker", target_prompt="bowl", num_views=4)
