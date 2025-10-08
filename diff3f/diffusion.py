@@ -11,8 +11,8 @@ try:
     from .unet_2d_condition import UNet2DConditionModel
     from .pipeline_controlnet_img2img import StableDiffusionControlNetImg2ImgPipeline
 except ImportError:
-    from unet_2d_condition import UNet2DConditionModel
-    from pipeline_controlnet_img2img import StableDiffusionControlNetImg2ImgPipeline
+    from diff3f.unet_2d_condition import UNet2DConditionModel
+    from diff3f.pipeline_controlnet_img2img import StableDiffusionControlNetImg2ImgPipeline
 
 DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 ckpt = "diffusion_pytorch_model.fp16.safetensors"

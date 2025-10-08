@@ -1,5 +1,5 @@
 import torch
-from diff3f import get_features_per_vertex
+from diff3f.diff3f import get_features_per_vertex
 from time import time
 # Handle both package import and direct script execution
 try:
@@ -8,16 +8,22 @@ try:
     from .diffusion import init_pipe
     from .dino import init_dino
     from .functional_map import compute_surface_map
-    from .point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
+    from .point_to_mesh_similarity import (
+        run_point_similarity_analysis,
+        point_similarity_colormap,
+        visualize_point_similarity,
+        run_multi_point_correspondence_analysis,
+    )
     from .utils import remesh_mesh_pair
+
 except ImportError:
-    from utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
-    from dataloaders.mesh_container import MeshContainer
-    from diffusion import init_pipe
-    from dino import init_dino
-    from functional_map import compute_surface_map
-    from point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
-    from utils import remesh_mesh_pair
+    from diff3f.utils import convert_mesh_container_to_torch_mesh, cosine_similarity, double_plot, get_colors, generate_colors
+    from diff3f.dataloaders.mesh_container import MeshContainer
+    from diff3f.diffusion import init_pipe
+    from diff3f.dino import init_dino
+    from diff3f.functional_map import compute_surface_map
+    from diff3f.point_to_mesh_similarity import run_point_similarity_analysis, point_similarity_colormap, visualize_point_similarity, run_multi_point_correspondence_analysis
+    from diff3f.utils import remesh_mesh_pair
 
 import importlib
 import meshplot as mp

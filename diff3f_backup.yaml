@@ -1,4 +1,4 @@
-name: diff3f
+name: diff3f_backup
 channels:
   - pytorch
   - conda-forge

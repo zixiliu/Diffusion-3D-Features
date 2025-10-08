@@ -8,9 +8,9 @@ try:
     from .dino import get_dino_features
     from .render import batch_render
 except ImportError:
-    from diffusion import add_texture_to_render
-    from dino import get_dino_features
-    from render import batch_render
+    from diff3f.diffusion import add_texture_to_render
+    from diff3f.dino import get_dino_features
+    from diff3f.render import batch_render
 from pytorch3d.ops import ball_query
 from tqdm import tqdm
 from time import time

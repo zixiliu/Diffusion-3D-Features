@@ -1,7 +1,19 @@
 """Shape correspondence template for testing from DPC"""
+# from argparse import Namespace
+# from torch.utils.data import DataLoader
+# from dataloaders.point_cloud_dataset import (
+#     PointCloudDataset,
+#     matrix_map_from_corr_map,
+# )
+# import torch
+# from torch import Tensor
+# from .utils import to_numpy
+# from torchmetrics import Accuracy
+# import torch
+# import torch.nn.functional as F
 from argparse import Namespace
 from torch.utils.data import DataLoader
-from dataloaders.point_cloud_dataset import (
+from .dataloaders.point_cloud_dataset import (
     PointCloudDataset,
     matrix_map_from_corr_map,
 )
@@ -9,7 +21,6 @@ import torch
 from torch import Tensor
 from .utils import to_numpy
 from torchmetrics import Accuracy
-import torch
 import torch.nn.functional as F
 
 
