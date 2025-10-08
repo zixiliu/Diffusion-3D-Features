@@ -6,7 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "diff3f"
 version = "0.1.0"
 authors = [
-    {name = "Niladri Shekhar Dutt, Sanjeev Muralikrishnan, Niloy J. Mitra"}
+  {name = "Zeo Liu"},
+  {name = "Niladri Shekhar Dutt"},
+  {name = "Sanjeev Muralikrishnan"},
+  {name = "Niloy J. Mitra"}
 ]
 description = "Diffusion 3D Features (Diff3F): Decorating Untextured Shapes with Distilled Semantic Features"
 readme = "README.md"
@@ -22,23 +25,21 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
-    "matplotlib>=3.10.6",
-    "numpy>=2.2.6",
-    "scikit-learn>=1.7.2",
-    "scipy>=1.15.3",
-    "torch>=2.8.0",
-    "torchvision>=0.23.0",
-    "torchaudio>=2.8.0",
     "diffusers==0.21.4",
     "einops==0.7.0",
-    "huggingface-hub>=0.14.1",
-    "meshio==5.3.4",
-    "opencv-python>=4.12.0.88",
+    "h5py==3.6.0",
+    "huggingface-hub==0.14.1",
+    "matplotlib==3.10.6",
+    "meshplot",
+    "numpy==1.26.4",
+    "open3d==0.19.0",
     "plyfile==1.0.1",
-    "transformers>=4.30.2",
+    "scikit-learn==1.7.2",
+    "scipy==1.15.3",
+    "torch==2.8.0",
+    "torchvision",
+    "transformers==4.30.2",
     "trimesh==4.0.0",
-    "potpourri3d==1.0.0",
-    "robust-laplacian==0.2.7",
 ]
 
 [project.optional-dependencies]

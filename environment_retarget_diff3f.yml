@@ -1,7 +1,0 @@
-name: retarget_diff3f
-channels:
-  - pytorch
-  - conda-forge
-  - tingfan
-  - ros
-prefix: /home/zixiliu/miniforge3/envs/retarget_diff3f
